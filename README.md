@@ -17,7 +17,7 @@ LcNLP Launcher provides a user-friendly interface for setting up and running NLP
 
 ## Preview
 
-[review1](launcher/assets/preview/120/p1.png)
+![review1](launcher/assets/preview/120/p1.png)
 
 ---
 
