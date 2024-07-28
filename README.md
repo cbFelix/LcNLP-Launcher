@@ -61,8 +61,9 @@ LcNLP Launcher provides a user-friendly interface for setting up and running NLP
 - **Operating System**: Windows 10/11, macOS 10.15+, or Linux.
 - **Python Version**: Python 3.8 or higher.
 - **Hardware**: 
-  - Minimum: 8 GB RAM, Dual-core CPU.
-  - Recommended: 32 GB RAM, powerful CPU like AMD Ryzen 9 5950X, Intel Core i9-12900K , GPU for model acceleration (NVIDIA CUDA supported) like NVIDIA RTX 2080 TI and NVIDIA RTX 3070.
+  - Minimum: 8 GB RAM, CPU like Intel Core i5 and Ryzen 7 for models with up to 1 billion parameters.
+  - Recommended: 32 GB RAM, powerful CPU like AMD Ryzen 7 3700k, Intel Core i7-8700 or GPU for model acceleration (NVIDIA CUDA supported) like NVIDIA RTX 1080 TI and NVIDIA RTX 2060 for models with up to 8 billion parameters.
+  - Recommendations for large models: 64 GB RAM, powerful GPU like NVIDIA RTX 4090 or NVIDIA Quadro RTX 8000 for large models.
 
 ---
 
