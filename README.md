@@ -15,6 +15,12 @@ LcNLP Launcher provides a user-friendly interface for setting up and running NLP
 
 ---
 
+## Preview
+
+[review1](launcher/assets/preview/120/p1.png)
+
+---
+
 ## Features
 
 - **GUI User Interface**: GUI powered by PySide6 for easy interaction and configuration.
@@ -35,26 +41,19 @@ LcNLP Launcher provides a user-friendly interface for setting up and running NLP
 
 ## Changelogs
 
-## v1.1.0
+## v1.2.0
 
 ---
 
-### Creating a modal settings window (ConfigDialog):
+### Optimization:
 
-- A new window for configuring text generation parameters (selecting a model, device, max_length, temperature, top_k, top_p, repetition_penalty) has been added.
-- The window is called by the "Settings" button.
-### Moving settings from the main window to the modal window:
+- Now you can use the half-precision model to save RAM and time for generating an answer at the expense of the accuracy and quality of the result
+### MInterface redesign:
 
-- Text generation settings have been moved to ConfigDialog.
-- Settings are called from the main ChatWindow window via a modal window.
-### Saving parameters after closing the dialog:
+- Completely redesigned UI and UX
+### Button to clear chat:
 
-- After closing the dialog, the settings are saved in the attributes of the ChatWindow object.
-- Parameters are updated in the open_settings method of the main window.
-### Simplifying the main interface:
-
-- Removed QGridLayout with settings from the main window, leaving only the main elements (chat field, input field and send button).
-
+- Added a button to clear chat history
 ---
 
 ## System Requirements

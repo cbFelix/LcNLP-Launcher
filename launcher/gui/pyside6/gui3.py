@@ -1,8 +1,8 @@
 import sys
 from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget, QLineEdit, QTextEdit, QPushButton,
-                               QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QHBoxLayout, QGridLayout, QSizePolicy,
-                               QDialog, QDialogButtonBox)
+                               QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QHBoxLayout, QDialog,
+                               QDialogButtonBox, QCheckBox)
 from PySide6.QtGui import QFont
 from launcher.generators.ai.NLP_Generator import AdvancedTextGenerator
 from launcher.utils.devices.device_manager import DeviceManager
@@ -32,12 +32,13 @@ class TextGeneratorThread(QThread):
         )
         self.update_text.emit(generated_text)
 
+
 class ConfigDialog(QDialog):
     def __init__(self, parent=None, current_settings=None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
         self.setStyleSheet("background-color: #2e2e2e; color: #ffffff;")
-        self.setFixedSize(400, 600)
+        self.setFixedSize(400, 650)
 
         layout = QVBoxLayout(self)
 
@@ -81,13 +82,17 @@ class ConfigDialog(QDialog):
         layout.addWidget(QLabel("Repetition Penalty:"))
         layout.addWidget(self.repetition_penalty_spinner)
 
+        # Add Half Model Accuracy checkbox
+        self.half_model_accuracy_checkbox = QCheckBox("Half Model Accuracy")
+        layout.addWidget(self.half_model_accuracy_checkbox)
+
         self.load_settings(current_settings)
 
         for i in range(layout.count()):
             item = layout.itemAt(i).widget()
             if isinstance(item, QLabel):
                 item.setStyleSheet("color: #ffffff;")
-            elif isinstance(item, QComboBox) or isinstance(item, QSpinBox) or isinstance(item, QDoubleSpinBox):
+            elif isinstance(item, QComboBox) or isinstance(item, QSpinBox) or isinstance(item, QDoubleSpinBox) or isinstance(item, QCheckBox):
                 item.setStyleSheet("background-color: #3e3e3e; color: #ffffff; border: none;")
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -104,6 +109,7 @@ class ConfigDialog(QDialog):
             self.top_k_spinner.setValue(settings['top_k'])
             self.top_p_spinner.setValue(settings['top_p'])
             self.repetition_penalty_spinner.setValue(settings['repetition_penalty'])
+            self.half_model_accuracy_checkbox.setChecked(settings.get('half_model_accuracy', False))
 
     def get_settings(self):
         return {
@@ -114,6 +120,7 @@ class ConfigDialog(QDialog):
             'top_k': self.top_k_spinner.value(),
             'top_p': self.top_p_spinner.value(),
             'repetition_penalty': self.repetition_penalty_spinner.value(),
+            'half_model_accuracy': self.half_model_accuracy_checkbox.isChecked()
         }
 
 
@@ -121,12 +128,7 @@ class ChatWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("LcNLP-Launcher")
-        self.setGeometry(100, 100, 800, 600)
-        self.setStyleSheet("background-color: #1e1e1e; color: #ffffff;")
-        self.init_ui()
-
-        self.generator = AdvancedTextGenerator(model_name='gpt2', device_id='cpu')
+        # Initialize settings and generator before calling init_ui
         self.settings = {
             'model': 'gpt2',
             'device': 'cpu',
@@ -134,8 +136,17 @@ class ChatWindow(QMainWindow):
             'temperature': 1.0,
             'top_k': 50,
             'top_p': 0.95,
-            'repetition_penalty': 1.0
+            'repetition_penalty': 1.0,
+            'half_model_accuracy': False
         }
+        self.generator = AdvancedTextGenerator(model_name=self.settings['model'],
+                                               device_id=self.settings['device'],
+                                               half_model_accuracy=self.settings['half_model_accuracy'])
+
+        self.setWindowTitle("LcNLP-Launcher")
+        self.setGeometry(100, 100, 800, 600)
+        self.setStyleSheet("background-color: #1e1e1e; color: #ffffff;")
+        self.init_ui()
 
     def init_ui(self):
         central_widget = QWidget()
@@ -143,70 +154,119 @@ class ChatWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Кнопка для открытия настроек
-        settings_button = QPushButton("Settings")
+        # Верхняя панель с названием модели и кнопкой настроек
+        header_layout = QHBoxLayout()
+        self.model_name_label = QLabel(f"Model: {self.settings['model']}  |  Device: {self.settings['device']}  |  Half Model Accuracy: {self.settings['half_model_accuracy']}")
+        self.model_name_label.setStyleSheet("background-color: transparent; color: #ffffff; padding: 10px; border-radius: 10px;")
+        header_layout.addWidget(self.model_name_label)
+
+        settings_button = QPushButton("⚙")
         settings_button.setStyleSheet("""
             QPushButton {
-                background-color: #4e4e4e; 
+                background-color: #3e3e3e; 
                 color: #ffffff; 
                 padding: 10px;
-                border: none;
+                border-radius: 10px;
                 font-size: 14px;
             }
             QPushButton:hover {
-                background-color: #5e5e5e;
+                background-color: #4e4e4e;
             }
             QPushButton:pressed {
-                background-color: #3e3e3e;
+                background-color: #2e2e2e;
             }
         """)
+        settings_button.setFixedSize(40, 40)
         settings_button.clicked.connect(self.open_settings)
-        main_layout.addWidget(settings_button, alignment=Qt.AlignRight)
+        header_layout.addWidget(settings_button, alignment=Qt.AlignRight)
 
-        # Поле для отображения сообщений
+        main_layout.addLayout(header_layout)
+
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
-        self.chat_display.setStyleSheet("background-color: #2e2e2e; color: #ffffff; height: 300px;")
+        self.chat_display.setStyleSheet("background-color: #2e2e2e; color: #ffffff; border: none;")
         self.chat_display.setFont(QFont("Arial", 12))
 
-        # Поле для ввода текста
+        clear_chat_button = QPushButton("Clear")
+        clear_chat_button.setStyleSheet("""
+            QPushButton {
+                background-color: #3e3e3e; 
+                color: #ffffff; 
+                padding: 10px;
+                border-radius: 10px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #4e4e4e;
+            }
+            QPushButton:pressed {
+                background-color: #2e2e2e;
+            }
+        """)
+        clear_chat_button.setFixedSize(40, 40)
+        clear_chat_button.clicked.connect(self.clear_chat)
+
+        input_layout = QHBoxLayout()
         self.input_field = QLineEdit()
-        self.input_field.setStyleSheet("background-color: #3e3e3e; color: #ffffff; padding: 10px;")
+        self.input_field.setStyleSheet("background-color: #3e3e3e; color: #ffffff; padding: 10px; border-radius: 10px;")
         self.input_field.setPlaceholderText("Type your message here...")
         self.input_field.setFont(QFont("Arial", 12))
         self.input_field.returnPressed.connect(self.send_message)
 
-        # Кнопка отправки
-        send_button = QPushButton("Send")
+        clear_chat_button = QPushButton("🧺")
+        clear_chat_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #3e3e3e; 
+                        color: #ffffff; 
+                        padding: 10px;
+                        border-radius: 10px;
+                        font-size: 14px;
+                    }
+                    QPushButton:hover {
+                        background-color: #4e4e4e;
+                    }
+                    QPushButton:pressed {
+                        background-color: #2e2e2e;
+                    }
+                """)
+        clear_chat_button.setFixedSize(40, 40)
+        clear_chat_button.clicked.connect(self.clear_chat)
+
+        send_button = QPushButton("➡")
         send_button.setStyleSheet("""
             QPushButton {
-                background-color: #4e4e4e; 
+                background-color: #3e3e3e; 
                 color: #ffffff; 
                 padding: 10px;
-                border: none;
+                border-radius: 10px;
                 font-size: 14px;
-                height: 30px;
             }
             QPushButton:hover {
-                background-color: #5e5e5e;
+                            background-color: #4e4e4e;
             }
             QPushButton:pressed {
-                background-color: #3e3e3e;
+                background-color: #2e2e2e;
             }
         """)
-        send_button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        send_button.setFixedSize(40, 40)
         send_button.clicked.connect(self.send_message)
 
+        input_layout.addWidget(clear_chat_button, alignment=Qt.AlignLeft)
+        input_layout.addWidget(self.input_field)
+        input_layout.addWidget(send_button, alignment=Qt.AlignRight)
+
         main_layout.addWidget(self.chat_display)
-        main_layout.addWidget(self.input_field)
-        main_layout.addWidget(send_button)
+        main_layout.addLayout(input_layout)
 
     def open_settings(self):
         dialog = ConfigDialog(self, self.settings)
         if dialog.exec():
-            self.settings = dialog.get_settings()
+            new_settings = dialog.get_settings()
+            self.settings.update(new_settings)
             self.update_model(self.settings['model'])
             self.update_device(self.settings['device'])
+            self.generator.half_model_accuracy = bool(self.settings['half_model_accuracy'])
+            self.update_header()
 
     def update_model(self, model_name):
         self.generator.load_model(model_name)
@@ -214,6 +274,9 @@ class ChatWindow(QMainWindow):
     def update_device(self, device_id):
         self.generator.set_device(device_id)
         self.generator.model.to(self.generator.device)
+
+    def update_header(self):
+        self.model_name_label.setText(f"Model: {self.settings['model']}  |  Device: {self.settings['device']}  |  Half model accuracy: {self.settings['half_model_accuracy']}")
 
     def send_message(self):
         user_text = self.input_field.text()
@@ -236,9 +299,13 @@ class ChatWindow(QMainWindow):
     def display_generated_text(self, generated_text):
         self.chat_display.append(f"<b>AI:</b> {generated_text}")
 
+    def clear_chat(self):
+        self.chat_display.clear()
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = ChatWindow()
     window.show()
     sys.exit(app.exec())
+

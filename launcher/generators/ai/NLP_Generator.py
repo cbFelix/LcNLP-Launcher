@@ -2,19 +2,29 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from launcher.utils.devices.device_manager import DeviceManager
 import torch
 
+
 class AdvancedTextGenerator:
-    def __init__(self, model_name='gpt2', device_id='cpu'):
+    def __init__(self, model_name='gpt2', device_id='cpu', half_model_accuracy=False):
+        self.model = None
+        self.tokenizer = None
         self.device_manager = DeviceManager()
         self.set_device(device_id)
         self.load_model(model_name)
+        self.model_name = model_name
+        self.half_model_accuracy = half_model_accuracy
 
     def set_device(self, device_id):
         self.device_manager.set_device(device_id)
         self.device = self.device_manager.get_device()
 
     def load_model(self, model_name):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name).to(self.device)
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.model = AutoModelForCausalLM.from_pretrained(model_name).to(self.device)
+            if self.half_model_accuracy:
+                self.model = self.model.half()
+        except Exception as e:
+            print(f"Error loading model: {e}, line: {e.__traceback__.tb_lineno}")
 
     def generate_text(self, prompt, max_length=50, temperature=1.0, top_k=50, top_p=0.95, repetition_penalty=1.0):
         inputs = self.tokenizer(prompt, return_tensors='pt').to(self.device)
@@ -34,7 +44,6 @@ class AdvancedTextGenerator:
 
         generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return generated_text
-
 
 
 if __name__ == '__main__':
